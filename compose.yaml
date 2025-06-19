@@ -1,0 +1,47 @@
+services:
+ 
+  wireguard:
+    container_name: wireguard
+    image: rpi_wireguard
+    build:
+      context: ./wireguard
+      dockerfile: Dockerfile
+    environment:
+      - SERVER_HOST=0.0.0.0         # Server B public IP address
+      - PEER_COUNT=10               # Number of client configs to generate
+    ports:
+      - 51820:51820
+      - 51820:51820/udp
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun
+    volumes:
+      - ./config:/config            # Volume to store generated configs on Server B
+    networks:
+      tunnel_bridge:
+        ipv4_address: 172.29.0.5
+      
+  tunnel:
+    container_name: tunnel
+    image: rpi_tunnel
+    build:
+      context: ./tunnel
+    environment:
+      - SS_PASSWORD=your_password   # Shadowsocks server password (Server A)
+      - SS_SERVER=0.0.0.0           # Shadowsocks server public IP address (Server A)
+      - SS_PORT=8388     
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun
+    networks:
+      tunnel_bridge:
+        ipv4_address: 172.29.0.4
+
+networks:
+  tunnel_bridge:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.29.0.0/16
